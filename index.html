@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>ZYNTH | Mini-jeu énigme</title>
+<style>
+  body {
+    background-color: #000;
+    color: #0f0;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    user-select: none;
+  }
+  h1 {
+    margin-top: 20px;
+    letter-spacing: 0.15em;
+  }
+  #gameArea {
+    margin-top: 30px;
+    position: relative;
+    width: 450px;
+    height: 450px;
+    background-color: #001100;
+    border: 3px solid #0f0;
+  }
+  #player, #target {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+  }
+  #player {
+    background-color: #0f0;
+  }
+  #target {
+    background-color: #f00;
+  }
+  #info {
+    margin-top: 15px;
+    font-size: 1.2rem;
+  }
+  #codeDisplay {
+    margin-top: 15px;
+    font-weight: bold;
+    letter-spacing: 0.25em;
+  }
+  #startBtn {
+    margin-top: 20px;
+    padding: 10px 25px;
+    font-size: 1.1rem;
+    background-color: #0f0;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #startBtn:hover {
+    background-color: #0c0;
+  }
+</style>
+</head>
+<body>
+
+<h1>ZYNTH | Mini-jeu énigme</h1>
+<div id="gameArea">
+  <div id="player"></div>
+  <div id="target"></div>
+</div>
+<div id="info">Appuie sur "Démarrer" pour lancer le défi !</div>
+<div id="codeDisplay"></div>
+<button id="startBtn">Démarrer</button>
+
+<script>
+(() => {
+  const gameArea = document.getElementById('gameArea');
+  const player = document.getElementById('player');
+  const target = document.getElementById('target');
+  const info = document.getElementById('info');
+  const codeDisplay = document.getElementById('codeDisplay');
+  const startBtn = document.getElementById('startBtn');
+
+  const areaSize = 450;
+  const stepSize = 15; // taille du déplacement
+  const playerSize = 30;
+  const targetSize = 30;
+  const maxTime = 30; // secondes
+  let timer;
+  let timeLeft;
+  let codeParts = [];
+  let playing = false;
+
+  // Position du joueur
+  let posX = 0;
+  let posY = 0;
+
+  // Position du target
+  let targetX = 0;
+  let targetY = 0;
+
+  function randomPosition() {
+    // positions multiples de stepSize dans la zone
+    const maxPos = areaSize - targetSize;
+    let x = Math.floor(Math.random() * (maxPos / stepSize + 1)) * stepSize;
+    let y = Math.floor(Math.random() * (maxPos / stepSize + 1)) * stepSize;
+    return { x, y };
+  }
+
+  function placePlayer(x, y) {
+    posX = x;
+    posY = y;
+    player.style.left = posX + 'px';
+    player.style.top = posY + 'px';
+  }
+
+  function placeTarget() {
+    let pos;
+    do {
+      pos = randomPosition();
+      // éviter que le target soit sur le joueur
+    } while(pos.x === posX && pos.y === posY);
+    targetX = pos.x;
+    targetY = pos.y;
+    target.style.left = targetX + 'px';
+    target.style.top = targetY + 'px';
+  }
+
+  function distance(aX, aY, bX, bY) {
+    return Math.abs(aX - bX) + Math.abs(aY - bY);
+  }
+
+  function checkCatch() {
+    if(posX === targetX && posY === targetY) {
+      return true;
+    }
+    return false;
+  }
+
+  function updateCode() {
+    const codes = ['7', '2', '9', '5', '4', '1']; // code final : 729541
+    let nextCode = codes[codeParts.length];
+    codeParts.push(nextCode);
+    codeDisplay.textContent = "Code partiel : " + codeParts.join(' ');
+    if(codeParts.length === codes.length) {
+      info.textContent = "🎉 Bravo ! Code complet obtenu : " + codeParts.join('') + " 🎉\nEnvoie-le à Astryxx pour continuer !";
+      endGame();
+    }
+  }
+
+  function startTimer() {
+    timeLeft = maxTime;
+    info.textContent = "Temps restant : " + timeLeft + " secondes. Attrape l’objet rouge !";
+    timer = setInterval(() => {
+      timeLeft--;
+      if(timeLeft <= 0) {
+        info.textContent = "⏰ Temps écoulé ! Code partiel : " + codeParts.join(' ');
+        endGame();
+      } else {
+        info.textContent = `Temps restant : ${timeLeft} secondes. Attrape l’objet rouge !`;
+      }
+    }, 1000);
+  }
+
+  function endGame() {
+    playing = false;
+    clearInterval(timer);
+    startBtn.disabled = false;
+  }
+
+  function startGame() {
+    codeParts = [];
+    placePlayer(0, 0);
+    placeTarget();
+    startTimer();
+    codeDisplay.textContent = "";
+    playing = true;
+    startBtn.disabled = true;
+    info.textContent = "Temps restant : " + maxTime + " secondes. Attrape l’objet rouge !";
+  }
+
+  function movePlayer(dx, dy) {
+    if(!playing) return;
+    let newX = posX + dx;
+    let newY = posY + dy;
+    // limites
+    if(newX < 0 || newX > areaSize - playerSize) return;
+    if(newY < 0 || newY > areaSize - playerSize) return;
+    placePlayer(newX, newY);
+    if(checkCatch()) {
+      updateCode();
+      placeTarget();
+    }
+  }
+
+  window.addEventListener('keydown', e => {
+    if(!playing) return;
+    switch(e.key.toLowerCase()) {
+      case 'z':
+      case 'arrowup':
+        movePlayer(0, -stepSize);
+        break;
+      case 's':
+      case 'arrowdown':
+        movePlayer(0, stepSize);
+        break;
+      case 'q':
+      case 'arrowleft':
+        movePlayer(-stepSize, 0);
+        break;
+      case 'd':
+      case 'arrowright':
+        movePlayer(stepSize, 0);
+        break;
+    }
+  });
+
+  startBtn.addEventListener('click', startGame);
+
+  // Initial setup
+  placePlayer(0,0);
+  placeTarget();
+})();
+</script>
+
+</body>
+</html>
